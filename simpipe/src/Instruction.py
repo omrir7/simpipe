@@ -85,7 +85,7 @@ def inst_from_row(memory: Memory, ptr: int, tid):
     # The trace not indicate on taken branches
     if (new_inst.inst_name == "jal") or (new_inst.inst_name == "jalr"):
         new_inst.br_taken = 1
-    # new_inst.decode_inst()                --------------------omri deleted
+
     decoded_inst=decode(new_inst);          #-------------------omri added
     decoded_inst.decode_inst(new_inst);     #------------------omri added
 
