@@ -1,6 +1,6 @@
 from Definitions import *
 from Memory import Memory
-from decode import *
+from Decode import *
 
 CSV_IDX_DICT = {"pc": 1, "m_inst": 5, "inst_name": 7, "br_taken": 8}
 # CSV_IDX_DICT = {"tick_rec":0, "pc":1, "dpc":2, "pc_req_":3,dpc_req,m_inst,inst_grp,cname,br_taken
@@ -85,8 +85,8 @@ def inst_from_row(memory: Memory, ptr: int, tid):
     # The trace not indicate on taken branches
     if (new_inst.inst_name == "jal") or (new_inst.inst_name == "jalr"):
         new_inst.br_taken = 1
-    # new_inst.decode_inst()                --------------------omri deleted
-    decoded_inst=decode(new_inst);          #-------------------omri added
-    decoded_inst.decode_inst(new_inst);     #------------------omri added
+
+    decoded_inst=Decode(new_inst)         #-------------------omri added
+    decoded_inst.decodeInst(new_inst)     #------------------omri added
 
     return new_inst;
