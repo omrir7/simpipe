@@ -1,0 +1,1823 @@
+Index: src/Definitions.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from Support import *\r\n\r\nVERSION = \"1.0\"\r\n\r\n# SIMULATION_FILE = \"../data/dummy.csv\"\r\nSIMULATION_FILE = \"../data/histtab_tid_0_ctr_0.csv\"\r\nDEAFULT_TABLE_PREFIX = \"histtab_tid_\"\r\nDEFAULT_EN_ANOMALY = False\r\n#DEFAULT_EN_ANOMALY = False\r\n\r\n# Simulation ARGS\r\nNUM_THREADS = 1\r\nNUM_STAGES = 4\r\nSPECULATIVE = True  # [True, False] # True - keep push instructions without knowing the result\r\nISSUE_POLICY = \"RR_ANOMALY_PERSISTENT\" #[\"RR_ANOMALY_PERSISTENT\",\"RR\"]  # [\"RR\", \"COARSE\", \"EVENT\",\"RR_ANOMALY_PERSISTENT]\r\nPREFETCH_POLICY = \"RR_ANOMALY\"  #[\"RR_ANOMALY\",\"RR\"]  # [\"RR\",\"RR_ANOMALY\"]\r\n# Control args\r\nVERB_ON = False\r\nDEFAULT_TIMEOUT = 50  # Number of ticks without instruction, setting to -1 will turn it off\r\n# PTRMAX = 6300000\r\nPTRMAX = None # no limit\r\n#PTRMAX = 30\r\nVERB_LVL = {\"NONE\": 0, \"NORM\": 1, \"DEBUG\": 2}\r\nVERB = \"NONE\"  # [0,1,2]\r\n#VERB = \"DEBUG\"  # [0,1,2]\r\n\r\n\r\ndef pprint(msg, verb=\"DEBUG\"):\r\n    if VERB_LVL[verb] <= VERB_LVL[VERB]:\r\n        print(msg)\r\n\r\n\r\nDEFAULT_INSTRUCTION_SIZE = 4  # Instruction size in bytes\r\nIQ_SIZE = 8  # Instruction Queue(IQ) size\r\nPREFETCH_DELAY = 4  # The delay from the cycle it granted to received\r\nFETCH_SIZE = 4  # Default number of instructions\r\n\r\nHAZARD_MEM_DELAY = 2\r\nHAZARD_MULDIV_DELAY = 3\r\nMEM_DICT = {'mem_path': SIMULATION_FILE, 'ptrMax': None}\r\n\r\n# generate permutations\r\nnum_thread_list = [1, 2, 4, 8]\r\nissue_policy_list = [\"RR\", \"RR_ANOMALY_PERSISTENT\"]  # [\"RR\", \"COARSE\", \"EVENT\"]\r\nspeculative_list = [False, True]\r\nnum_stages_list = [4, 5]\r\nprefetch_delay_list = [2,3,4]\r\nprefetch_policy_list = [\"RR\",\"RR_ANOMALY\"]\r\nanomaly_en_list = [True,False]\r\n\r\nRGR = [[\"NUM_THREAD\", num_thread_list], [\"ISSUE_POLICY\", issue_policy_list],\r\n       [\"SPECULATIVE\", speculative_list], [\"NUM_STAGES\", num_stages_list],\r\n       [\"PREFETCH_DELAY\", prefetch_delay_list],[\"PREFETCH_POLICY\",prefetch_policy_list],[\"EN_ANOMALY\",anomaly_en_list]]\r\n\r\nFAST_RGR = [[\"NUM_THREAD\", [2]], [\"ISSUE_POLICY\", [\"RR\"]], [\"SPECULATIVE\", [False]],\r\n            [\"NUM_STAGES\", [4]], [\"PREFETCH_DELAY\", [3]]]\r\n\r\n#RGR = FAST_RGR\r\nREGISTER_NUM = 32\r\nOPCODE = {\r\n    \"0110111\": \"LUI\",\r\n    \"0010111\": \"AUIPC\",\r\n    \"1101111\": \"JAL\",\r\n    \"1100111\": \"JALR\",\r\n    \"1100011\": \"BRANCH\",\r\n    \"0000011\": \"LOAD\",\r\n    \"0100011\": \"STORE\",\r\n    \"0010011\": \"ALUI\",\r\n    \"0110011\": \"ALU\",\r\n    \"0011011\": \"ALUIW\",\r\n    \"0111011\": \"ALUW\",\r\n    \"0001111\": \"FENCE\",\r\n    \"1110011\": \"ECMD\",\r\n}\r\n\r\nBRANCH = {0: \"BEQ\", 1: \"BNE\", 4: \"BLT\", 5: \"BGE\", 6: \"BLTU\", 7: \"BGEU\"}\r\nLOAD = {0: \"LB\", 1: \"LH\", 2: \"LW\", 4: \"LBU\", 5: \"LHU\", 6: \"LWU\", 3: \"LD\"}\r\nSTORE = {0: \"SB\", 1: \"SH\", 2: \"SW\", 3: \"SD\"}\r\nALUI = {0: \"ADDI\", 1: \"SLLI\", 2: \"SLTI\", 3: \"SLTIU\", 4: \"XORI\", 6: \"ORI\", 7: \"ANDI\", 1: \"SLLI\", 5: \"SRI\"}\r\nSRI = {0: \"SRLI\", 1: \"SRAI\"}\r\nALU = {0: \"ADD_SUB\", 1: \"SLL\", 2: \"SLT\", 3: \"SLTU\", 4: \"XOR\", 5: \"SR\", 6: \"OR\", 7: \"AND\"}\r\nALUIW = {0: \"ADDIW\", 1: \"SLLIW\", 5: \"SRIW\"}\r\nALUW = {0: \"ADD_SUB_W\", 1: \"SLLW\", 5: \"SRW\"}\r\n\r\nADD_SUB = {0: \"ADD\", 1: \"SUB\"}\r\nSR = {0: \"SRL\", 1: \"SRA\"}\r\n\r\nMULDIV = {0: \"MUL\", 1: \"MULH\", 2: \"MULHSU\", 3: \"MULHU\", 4: \"DIV\", 5: \"DIVU\", 6: \"REM\", 7: \"REMU\"}\r\nMULDIV64 = {0: \"MULW\", 4: \"DIVW\", 5: \"DIVUW\", 6: \"REMW\", 7: \"REMUW\"}\r\n\r\n# Extra\r\n#  - Check how many instructions were flushed when using different mechanisms\r\n#  - Timer for end of simulation termination in case of error+end of test check\r\n#  - print - simulation progress every tick cycles - [YE]\r\n#  - Change verbosity method to level sensitive - [YE]\r\n#  - print to CSV pipeline, and rgr\r\n#  - Anomaly detection influence inside the pipeline - [David]\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Definitions.py b/src/Definitions.py
+--- a/src/Definitions.py	
++++ b/src/Definitions.py	
+@@ -12,16 +12,16 @@
+ NUM_THREADS = 1
+ NUM_STAGES = 4
+ SPECULATIVE = True  # [True, False] # True - keep push instructions without knowing the result
+-ISSUE_POLICY = "RR_ANOMALY_PERSISTENT" #["RR_ANOMALY_PERSISTENT","RR"]  # ["RR", "COARSE", "EVENT","RR_ANOMALY_PERSISTENT]
+-PREFETCH_POLICY = "RR_ANOMALY"  #["RR_ANOMALY","RR"]  # ["RR","RR_ANOMALY"]
++ISSUE_POLICY = "RR" #["RR_ANOMALY_PERSISTENT","RR"]  # ["RR", "COARSE", "EVENT","RR_ANOMALY_PERSISTENT]
++PREFETCH_POLICY = "RR"  #["RR_ANOMALY","RR"]  # ["RR","RR_ANOMALY"]
+ # Control args
+ VERB_ON = False
+ DEFAULT_TIMEOUT = 50  # Number of ticks without instruction, setting to -1 will turn it off
+ # PTRMAX = 6300000
+-PTRMAX = None # no limit
++PTRMAX = 2000 # no limit
+ #PTRMAX = 30
+ VERB_LVL = {"NONE": 0, "NORM": 1, "DEBUG": 2}
+-VERB = "NONE"  # [0,1,2]
++VERB = "DEBUG"  # [0,1,2] ,NONE
+ #VERB = "DEBUG"  # [0,1,2]
+ 
+ 
+Index: src/decode.py
+===================================================================
+diff --git a/src/decode.py b/src/decode.py
+new file mode 100644
+--- /dev/null	
++++ b/src/decode.py	
+@@ -0,0 +1,68 @@
++from Definitions import *
++from Instruction import *
++import json
++class Decode():
++
++    def __init__(self,instruction):
++        instruction.opcode = (instruction.m_inst[0:7])[::-1]            #leftovers from old decode logic
++        instruction.func3 = int((instruction.m_inst[12:15])[::-1], 2)   #leftovers from old decode logic
++        instruction.immd_25 = int((instruction.m_inst[25])[::-1], 2)    #leftovers from old decode logic
++        instruction.m_inst=instruction.m_inst
++
++#   Decode fields -  gets an instruction and json arr an returns 2 arrays:
++#1. fields: the registers (and imm for non compressed instructions) that this instruction uses (example: ["rd","rs1","rs2"])
++#2. values: the values of fields. (for example: if fields is the same like last example, so values=[1,2,3] means that
++#           rd=1 rs1=2 rs2=3
++    def decodeFields(self, inst, arr):
++        fields = arr['fields']
++        values = [0] * len(fields)
++        for i in range(len(fields)):
++            cur_field_bit_range = arr[fields[i]]
++            values[i] = inst[cur_field_bit_range[0]:cur_field_bit_range[1] + 1]
++            #
++            if(values[i]):
++                values[i] = int(values[i], 2)
++        return values, fields
++
++#   decodeInst - gets an instruction and filles its following attributes:
++#   1. name
++#   2. used registers
++
++    def decodeInst(self, instruction):
++        with open('riscv_isa.json') as f:   #open json
++            arr_tmp = json.load(f)
++        last = False    #when we get to a leaf last=true
++        comp = 1        #compressed instruction
++        if (instruction.m_inst[1] == "0" and instruction.m_inst[0] == "0"): #compressed quardrad0
++            arr_tmp = arr_tmp["00"]
++        if (instruction.m_inst[1] == "0" and instruction.m_inst[0] == "1"): #compressed quardrad1
++            arr_tmp = arr_tmp["01"]
++        if (instruction.m_inst[1] == "1" and instruction.m_inst[0] == "0"): #compressed quardrad2
++            arr_tmp = arr_tmp["10"]
++        if (instruction.m_inst[1] == "1" and instruction.m_inst[0] == "1"): #non-compressed
++            arr_tmp = arr_tmp["11"]
++            comp = 0
++
++        while (last == 0):       # decending down the decoding tree until last leve/ leaf
++            last = arr_tmp['last_level']
++            if last==0:
++                bit_range = arr_tmp['bit_range']
++                if(len(bit_range)>1):
++                    next_field = instruction.m_inst[bit_range[0]:bit_range[1] + 1]
++                else:
++                    next_field = instruction.m_inst[bit_range[0]]
++                next_field = str(next_field)
++                if(next_field[::-1] not in arr_tmp):
++                    arr_tmp=arr_tmp['else']
++                else:
++                    arr_tmp = arr_tmp[next_field[::-1]]
++
++        values, fields = self.decodeFields(instruction.m_inst, arr_tmp)
++        instruction.name=arr_tmp['name']
++        for i in range(len(fields)):
++            if (fields[i]=='rd'):
++                instruction.rd=values[i]
++            elif (fields[i]=='rs1'):
++                instruction.rs1=values[i]
++            elif (fields[i]=='rs2'):
++                instruction.rs2=values[i]
+\ No newline at end of file
+Index: src/json_test.py
+===================================================================
+diff --git a/src/json_test.py b/src/json_test.py
+new file mode 100644
+--- /dev/null	
++++ b/src/json_test.py	
+@@ -0,0 +1,66 @@
++import json
++
++def decode_feilds(inst,arr):
++    fields=arr['fields']
++    values=[0]*len(fields)
++    for i in range(len(fields)):
++        cur_field_bit_range=arr[fields[i]]
++        values[i]=inst[cur_field_bit_range[0]:cur_field_bit_range[1]+1]
++        values[i]=int(values[i], 2)
++    return values,fields
++#def decode_feilds_comp(inst,arr):
++#    fields=arr['fields']
++#    k=0
++#    values=[0]*len(fields)
++#    for i in range(len(fields)):
++#        cur_field_bit_range=arr_tmp[fields[i]]
++#        k=cur_field_bit_range[0]
++#        temp=""
++#        for k in cur_field_bit_range:
++#            temp = temp + inst[k]
++#        values[i] = int(temp, 2)
++#    return values,fields
++#
++
++with open('C:/Users/omrir/PycharmProjects/simpipe/src/riscv_isa.json') as f:
++    arr_tmp=json.load(f)
++count=0
++inst1="11100110010100000100000000000001" # jalr rd=5 rs=4 im=1
++inst3="0001000011000011" # c.sw rs2=2 rs1=3 uimm2_6=0   - imm decode not implemented
++inst="'01010100111000010000000000000000'" # c.srai  rs1/rd=2 uimm2_6=0  - imm decode not implemented
++
++
++last=False
++comp=1
++
++if(inst[1] == "0" and inst[0]=="0"):
++    arr_tmp=arr_tmp["00"]
++if (inst[1] == "0" and inst[0]=="1"):
++    arr_tmp = arr_tmp["01"]
++if (inst[1] == "1" and inst[0]=="0"):
++    arr_tmp=arr_tmp["10"]
++if (inst[1] == "1" and inst[0]=="1"):
++    arr_tmp=arr_tmp["11"]
++    comp=0
++while(last==0):
++    last=arr_tmp['last_level']
++    if(last==0 and comp==0):
++        bit_range=arr_tmp['bit_range']
++        next_feild=inst[bit_range[0]:bit_range[1]+1]
++        next_feild=str(next_feild)
++        arr_tmp=arr_tmp[next_feild[::-1]]
++    if(last==0 and comp==1):
++        bit_range = arr_tmp['bit_range']
++        next_feild=inst[bit_range[0]:bit_range[1]+1]
++        next_feild=str(next_feild)
++        arr_tmp=arr_tmp[next_feild[::-1]]
++if comp==0:
++    values,fields=decode_feilds(inst,arr_tmp)
++if comp==1:
++    values, fields = decode_feilds(inst, arr_tmp)
++name=arr_tmp['name']
++
++print(fields)
++print (values)
++print(name)
++
+Index: src/FIFOQueue.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>\r\nclass FIFOQueue:\r\n    def __init__(self, size: int):\r\n        self.q_list = []\r\n        self.size = size\r\n\r\n    def set_q_list(self, input_list: list):\r\n        self.q_list = input_list\r\n\r\n    def pop(self):\r\n        if self.q_list:\r\n            tmp = self.q_list[-1]\r\n            del self.q_list[-1]\r\n            return tmp\r\n\r\n    def front(self):  # returns first out\r\n        if self.q_list:\r\n            return self.q_list[-1]\r\n        return None\r\n\r\n    def back(self):\r\n        if self.q_list:\r\n            return self.q_list[0]\r\n        return None\r\n\r\n    def at(self,idx):\r\n        if idx < len(self.q_list):\r\n            return self.q_list[idx]\r\n        return None\r\n\r\n    def len(self):\r\n        return len(self.q_list)\r\n\r\n    def space(self):\r\n        return self.size - self.len()\r\n\r\n    def push(self, data):\r\n        if len(self.q_list)+1 <= self.size:\r\n            self.q_list.insert(0, data)\r\n            return True\r\n        else:\r\n            self.q_list.insert(0, data)\r\n            del self.q_list[-1]\r\n\r\n    def flush(self):\r\n        self.q_list = []\r\n\r\n    def __bool__(self):\r\n        return len(self.q_list) > 0\r\n\r\n    def empty(self):\r\n        return len(self.q_list) == 0
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/FIFOQueue.py b/src/FIFOQueue.py
+--- a/src/FIFOQueue.py	
++++ b/src/FIFOQueue.py	
+@@ -17,6 +17,7 @@
+         if self.q_list:
+             return self.q_list[-1]
+         return None
++        return None
+ 
+     def back(self):
+         if self.q_list:
+Index: src/Fetch.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from FIFOQueue import FIFOQueue\r\nfrom Instruction import *\r\nfrom Definitions import *\r\nfrom Memory import Memory\r\n\r\n\r\nclass Fetch:\r\n\r\n    def __init__(self, tid: int, memory : Memory, params):\r\n        self.tid = tid\r\n        self.queue_size = int(params[\"IQ_SIZE\"]) if \"IQ_SIZE\" in params.keys() else IQ_SIZE\r\n        self.fetchQueue = FIFOQueue(self.queue_size)\r\n        self.initMemPtr = 0\r\n        self.NextInstMemPtr = self.initMemPtr\r\n        self.MaxPtr = memory.len()\r\n        self.memory = memory\r\n        self.fetch_size = int(params[\"FETCH_SIZE\"]) if \"FETCH_SIZE\" in params.keys() \\\r\n            else FETCH_SIZE  # Max number of instructions to fetch from memory\r\n        # PreFetch scheduling mechanism\r\n        self.prefetch_ongoing = False\r\n        self.flush_ongoing = False\r\n        self.prefetch_delay = int(params[\"PREFETCH_DELAY\"]) if \"PREFETCH_DELAY\" in params.keys() \\\r\n            else PREFETCH_DELAY\r\n        self.prefetch_cycle = 0\r\n        # Statistics\r\n        self.prefetch_inst_count = 0\r\n        self.flushed_inst_count = 0\r\n        self.dummy_inst_count = 0\r\n        self.anomaly_enabled =  params[\"EN_ANOMALY\"] == \"True\" if \"EN_ANOMALY\" in params.keys() else DEFAULT_EN_ANOMALY\r\n        self.thread_unit = None\r\n        self.num_of_mem_access = 0\r\n\r\n    def set_mem_ptr(self, ptr_val: int):\r\n        self.NextInstMemPtr = ptr_val\r\n\r\n    def fetch(self):\r\n\r\n        # Check that the address is valid.\r\n        if not self.ptr_within_mem_range(self.NextInstMemPtr):\r\n            return False\r\n\r\n        # First instruction must be pushed and update the pointers\r\n        first_inst = Instruction.inst_from_row(self.memory, self.NextInstMemPtr, self.tid)\r\n        self.fetchQueue.push(first_inst)\r\n        self.NextInstMemPtr += 1\r\n        self.prefetch_inst_count += 1\r\n\r\n        # Calculate based on the current offset where the instruction located in the line\r\n        max_fetch_size = self.fetch_size - ((int(first_inst.pc) / DEFAULT_INSTRUCTION_SIZE) % self.fetch_size) - 1\r\n\r\n        former_inst = first_inst  # Used inside the loop to track last instruction\r\n        empty_inst = False  # Once set, the rest instruction that pushed are empty\r\n\r\n        # Looping over all possible left instruction can be pulled.\r\n        for i in range(0, int(max_fetch_size)):\r\n            # Check if next address is valid\r\n            if not self.ptr_within_mem_range(self.NextInstMemPtr):\r\n                empty_inst = True\r\n            else:\r\n                curr_inst = Instruction.inst_from_row(self.memory, self.NextInstMemPtr, self.tid)\r\n                delta_pc = curr_inst.delta_pc(former_inst)\r\n                # Check that next instruction is sequential in memory\r\n                if delta_pc != DEFAULT_INSTRUCTION_SIZE:\r\n                    empty_inst = True\r\n                else:\r\n                    self.fetchQueue.push(curr_inst)\r\n                    self.NextInstMemPtr += 1\r\n                    self.prefetch_inst_count += 1\r\n                    former_inst = curr_inst\r\n\r\n            # None were pushed, create an empty instruction\r\n            if empty_inst:\r\n                self.fetchQueue.push(Instruction.empty_inst(self.tid, \"dummy\", False))\r\n                self.dummy_inst_count += 1\r\n\r\n        return True\r\n\r\n    # Progress pre-fetching, checks if got pending fetch request, and the fetch delay is passed.\r\n    def tick(self, cur_tick):\r\n        if self.prefetch_ongoing and (self.prefetch_cycle + self.prefetch_delay <= cur_tick):\r\n            if not self.flush_ongoing:\r\n                self.fetch()\r\n                self.set_anomaly()\r\n            self.flush_ongoing = False\r\n            self.prefetch_ongoing = False\r\n\r\n    # Change fetch status\r\n    def set_prefetch(self, cur_tick):\r\n        self.num_of_mem_access += 1\r\n        self.prefetch_ongoing = True\r\n        self.prefetch_cycle = cur_tick\r\n        self.flush_ongoing = False\r\n\r\n    # return if allowed to schedule for pre-fetching\r\n    def check_prefetch(self):\r\n        # Check if there is already prefetch ongoing, or all instruction are done\r\n        if self.prefetch_ongoing or self.mem_done():\r\n            return False\r\n        # anomaly case\r\n        if self.anomaly_enabled and self.thread_unit.is_anomaly() and (self.fetchQueue.len() > 2):\r\n            return False\r\n        # Make sure in case schedule that got space for store all received instructions\r\n        return self.fetchQueue.space() >= self.fetch_size\r\n\r\n    def ptr_within_mem_range(self, ptr_val: int):\r\n        if self.initMemPtr > ptr_val:\r\n            return False\r\n        if self.MaxPtr:\r\n            if (ptr_val < self.memory.len()) and (ptr_val < self.MaxPtr):\r\n                return True\r\n        else:  # Max Ptr isn't defined\r\n            if ptr_val < self.memory.len():\r\n                return True\r\n        return False\r\n\r\n    def mem_done(self):\r\n        return self.NextInstMemPtr >= self.MaxPtr\r\n\r\n    def fetch_done(self):\r\n        return self.mem_done() and (not self.prefetch_ongoing)\r\n\r\n    def flush(self, next_num):\r\n        numOfInst_to_flush = self.fetchQueue.len()\r\n        self.flushed_inst_count += self.fetchQueue.len()\r\n        self.fetchQueue.flush()\r\n        self.NextInstMemPtr = next_num\r\n        self.flush_ongoing = True\r\n        return numOfInst_to_flush\r\n\r\n    def report_statistics(self):\r\n        print(\"Fetch TID={0} prefetch_inst_count={1} dummy_count={2} flushed_inst={3} mem_len={4} \" \r\n              \"mem_delay={5} next_ptr={6}\".format(self.tid, self.prefetch_inst_count, self.dummy_inst_count,\r\n                                                  self.flushed_inst_count, self.memory.len(), self.prefetch_delay,\r\n                                                  self.NextInstMemPtr))\r\n\r\n    # anomaly functions\r\n    def set_anomaly(self) -> None:\r\n        if not self.anomaly_enabled:\r\n            return\r\n\r\n        if self.check_for_anomaly_in_Queue():\r\n            self.thread_unit.set_anomaly(True)\r\n\r\n\r\n\r\n    def check_for_anomaly_in_Queue(self):\r\n        if self.fetchQueue.len() == 0:\r\n            return False\r\n\r\n        for i in range(0,int(self.fetchQueue.len())):\r\n            if self.fetchQueue.at(i).anomaly:\r\n                return True\r\n        return False
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Fetch.py b/src/Fetch.py
+--- a/src/Fetch.py	
++++ b/src/Fetch.py	
+@@ -40,7 +40,7 @@
+             return False
+ 
+         # First instruction must be pushed and update the pointers
+-        first_inst = Instruction.inst_from_row(self.memory, self.NextInstMemPtr, self.tid)
++        first_inst = inst_from_row(self.memory, self.NextInstMemPtr, self.tid)
+         self.fetchQueue.push(first_inst)
+         self.NextInstMemPtr += 1
+         self.prefetch_inst_count += 1
+@@ -57,7 +57,7 @@
+             if not self.ptr_within_mem_range(self.NextInstMemPtr):
+                 empty_inst = True
+             else:
+-                curr_inst = Instruction.inst_from_row(self.memory, self.NextInstMemPtr, self.tid)
++                curr_inst = inst_from_row(self.memory, self.NextInstMemPtr, self.tid)
+                 delta_pc = curr_inst.delta_pc(former_inst)
+                 # Check that next instruction is sequential in memory
+                 if delta_pc != DEFAULT_INSTRUCTION_SIZE:
+Index: src/Pipeline.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from Thread import *\r\nfrom Fetch import *\r\nfrom Issue import *\r\nfrom Execute import *\r\nfrom Memory import Memory\r\n\r\n\r\nclass Pipeline:\r\n    # arg\r\n    def __init__(self, memory: Memory, params=dict()):\r\n        self.num_threads = int(params[\"NUM_THREAD\"]) if \"NUM_THREAD\" in params.keys() else NUM_THREADS\r\n        self.num_stages = int(params[\"NUM_STAGES\"]) if \"NUM_STAGES\" in params.keys() else NUM_STAGES\r\n        self.thread_unit = [Thread(tid, self.num_stages) for tid in range(0, self.num_threads)]\r\n        self.fetch_unit = [Fetch(tid, memory, params) for tid in range(0, self.num_threads)]  # Create fetch unit\r\n        self.issue_unit = Issue(params)\r\n        self.execute_unit = Execute(params)\r\n        self.connect()\r\n        self.timer = DEFAULT_TIMEOUT\r\n        # Prefetch\r\n        self.prefetch_policy = params[\"PREFETCH_POLICY\"] if \"PREFETCH_POLICY\" in params.keys() else PREFETCH_POLICY\r\n        self.tid_prefetch_vld = False\r\n        self.tid_prefetch_ptr = 0\r\n        # Verbosity\r\n        self.timer = DEFAULT_TIMEOUT\r\n        # Statistics\r\n        self.last_tick = 0\r\n        self.count_flushed_inst = 0\r\n        self.ipc = 0\r\n        self.total_num_of_mem_access = 0\r\n\r\n    # Connect between the class's\r\n    def connect(self):\r\n\r\n        # Fetch Unit\r\n        for tid in range(0, self.num_threads):\r\n            self.fetch_unit[tid].thread_unit = self.thread_unit[tid]\r\n\r\n        # Issue Unit\r\n        # - thread_unit - Checks thread info and dependency\r\n        # - fetch_unit - check the instruction inside the fetch\r\n        # - Execute - pass the instruction to execute unit\r\n        self.issue_unit.thread_unit = self.thread_unit\r\n        self.issue_unit.fetch_unit = self.fetch_unit\r\n        self.issue_unit.execute_unit = self.execute_unit\r\n\r\n        # Execute\r\n        # - thread_unit - TBD\r\n        # - issue_unit - update in case of flush\r\n        # - fetch_unit - update in case of flush\r\n        self.execute_unit.thread_unit = self.thread_unit\r\n        self.execute_unit.issue_unit = self.issue_unit\r\n        self.execute_unit.fetch_unit = self.fetch_unit\r\n\r\n    # The main function that happens every cycle and responsible on the progress of the pipeline.\r\n    def tick(self, cur_tick):\r\n        # Checking if all threads and units are finished there execution\r\n        if self.check_done():\r\n            return False\r\n\r\n        # Update Execute\r\n        self.execute_unit.tick(cur_tick)\r\n\r\n        # Update Issue\r\n        self.issue_unit.tick(cur_tick)\r\n\r\n        # Select which thread will prefetch\r\n        self.set_prefetch(cur_tick)\r\n\r\n        # Progress Fetch\r\n        for idx in range(0, self.num_threads):\r\n            self.fetch_unit[idx].tick(cur_tick)\r\n\r\n        # Update simulation statistics\r\n        self.update_statistics(cur_tick)\r\n\r\n        self.trace_tick(cur_tick)\r\n        return True\r\n\r\n    # Used as trace of simulator\r\n    def trace_tick(self, cur_tick):\r\n        prefetch_id = self.tid_prefetch_ptr if self.tid_prefetch_vld else \"x\"\r\n        fetch_sts = [str(self.fetch_unit[i].fetchQueue.len()) for i in range(0, self.num_threads)]\r\n        issue_sts = self.issue_unit.get_status()\r\n        execute_sts = self.execute_unit.get_status()\r\n        thread_sts = [\" t\"+str(i)+\": \"+str(self.thread_unit[i].ready)+\",af-\"+str(int(self.thread_unit[i].anomaly_in_fetch))+\",ae-\"+str(int(self.thread_unit[i].anomaly_in_execute)) for i in range(0, self.num_threads)]\r\n        msg = \"{0:<5},{1:^5},{2},{3:^15}, {4:^35} \\t, {5}\".format(\r\n            cur_tick, prefetch_id, \",\".join(fetch_sts), issue_sts, execute_sts, \",\".join(thread_sts))\r\n        pprint(msg, \"NORM\")\r\n\r\n    # Check Between all thread, who is legit for fetching\r\n    def set_prefetch(self, cur_tick):\r\n        self.tid_prefetch_vld = False\r\n        req_list = [self.fetch_unit[tid].check_prefetch() for tid in range(self.num_threads)]\r\n        # update based on the policy of prefetch - changes tid_prefetch_ptr if it is needed\r\n        self.update_prefetch_policy()\r\n        self.tid_prefetch_ptr = round_robin(self.tid_prefetch_ptr, req_list, self.num_threads)\r\n        if req_list[self.tid_prefetch_ptr]:\r\n            self.fetch_unit[self.tid_prefetch_ptr].set_prefetch(cur_tick)\r\n            self.tid_prefetch_vld = True\r\n\r\n    # --------------- Policies ---------------#\r\n    def update_prefetch_policy(self):\r\n        if self.prefetch_policy == \"RR_ANOMALY\":\r\n            self.round_robin_anomaly_policy()\r\n        elif self.prefetch_policy == \"RR\":\r\n            pass\r\n\r\n    def round_robin_anomaly_policy(self):\r\n        ''':arg\r\n         finds an empty fetch queue that is not in an anomaly state\r\n         and set it to next fetch if no anomaly\r\n        '''\r\n\r\n        tmp_ptr = self.tid_prefetch_ptr\r\n        for tid in range(0,self.num_threads):\r\n            tmp_ptr = (tmp_ptr + 1) % self.num_threads\r\n            valid = (self.fetch_unit[tmp_ptr].fetchQueue.len() <= 2) or\\\r\n                    ((not self.thread_unit[tmp_ptr].is_anomaly()) and (not self.fetch_unit[tmp_ptr].fetch_done))\r\n            if valid:\r\n                self.tid_prefetch_ptr = (tmp_ptr-1) % self.num_threads\r\n                return\r\n\r\n    # Check if all units are done\r\n    def check_done(self):\r\n        # Check all fetch units are done = last inst + no pending inst + queue is empty\r\n        fetch_done = all([self.fetch_unit[i].fetch_done() for i in range(0, self.num_threads)])\r\n        issue_done = self.issue_unit.issue_empty\r\n        execute_done = self.execute_unit.done()\r\n        timeout_done = self.timer == 0\r\n        return (fetch_done and issue_done and execute_done) or timeout_done\r\n\r\n    # ---------------  Statistics ---------------#\r\n\r\n    def update_statistics(self, cur_tick):\r\n        # count how many valid instruction committed\r\n        self.timer -= 1\r\n        self.last_tick = cur_tick\r\n        if not self.execute_unit.committed_inst.empty_inst:\r\n            self.timer = DEFAULT_TIMEOUT\r\n        else:\r\n            self.timer -= 1\r\n\r\n        if self.last_tick:  # Avoid division by zero\r\n            self.ipc = float(self.execute_unit.count_committed_inst / self.last_tick)\r\n\r\n        self.count_flushed_inst = self.issue_unit.count_flushed_inst + self.execute_unit.count_flushed_inst +\\\r\n            sum([self.fetch_unit[idx].flushed_inst_count for idx in range(0, self.num_threads)])\r\n\r\n        self.total_num_of_mem_access =  sum([self.fetch_unit[idx].num_of_mem_access for idx in range(0, self.num_threads)])\r\n\r\n    def report_model(self):\r\n        for tid_idx in range(0, self.num_threads):\r\n            self.fetch_unit[tid_idx].report_statistics()\r\n        self.issue_unit.report_model()\r\n        self.execute_unit.report_model()\r\n        print(\"Num Thread={0}, stage={1}\".format(\r\n            self.num_threads, self.execute_unit.num_stages))\r\n\r\n    def report_statistics(self):\r\n        msg = \"Inst Committed {0} ipc {1:.3f} flushed {2} mem accesses {3}\".format(\r\n            self.execute_unit.count_committed_inst, self.ipc, self.count_flushed_inst, self.total_num_of_mem_access)\r\n        pprint(msg, \"NONE\")\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Pipeline.py b/src/Pipeline.py
+--- a/src/Pipeline.py	
++++ b/src/Pipeline.py	
+@@ -107,7 +107,8 @@
+ 
+     def round_robin_anomaly_policy(self):
+         ''':arg
+-         finds an empty fetch queue that is not in an anomaly state
++         finds an
++          empty fetch queue that is not in an anomaly state
+          and set it to next fetch if no anomaly
+         '''
+ 
+Index: src/riscv_isa.json
+===================================================================
+diff --git a/src/riscv_isa.json b/src/riscv_isa.json
+new file mode 100644
+--- /dev/null	
++++ b/src/riscv_isa.json	
+@@ -0,0 +1,1430 @@
++
++{
++	"00": 
++	{
++		"name":"compresed0",
++		"last_level":false,
++        "bit_range":[13,15],
++        "000":
++		{
++			"name": "C.ADDI4SPN",
++			"last_level":true,
++			"fields":["rd","nzuimm_2_9"],
++			"rd":[2,4],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"nzuimm_2_9":[6,5,11,12,7,8,9,10]
++			
++		},
++        "001":
++		{
++			"name": "C.FLD",
++			"last_level":true,
++			"fields":["rd","rs1","uimm_3_7"],
++			"rd":[2,4],
++			"rs1":[7,9],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_2_7":[10,11,12,5,6]
++			
++		},
++        "010":
++		{
++			"name": "C.LW",
++			"last_level":true,
++			"fields":["rd","rs1","uimm_2_6"],
++			"rd":[2,4],
++			"rs1":[7,9],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_2_6":[6,10,11,12,5]
++			
++		},
++        "011":
++		{
++			"name": "C.FLW",
++			"last_level":true,
++			"fields":["rd","rs1","uimm_2_6"],
++			"rd":[2,4],
++			"rs1":[7,9],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_2_6":[6,10,11,12,5]
++			
++		},
++        "101":
++		{
++			"name": "C.FSD",
++			"last_level":true,
++			"fields":["rs1","rs2","uimm_3_7"],
++			"rs1":[7,9],
++			"rs2":[2,4],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_3_7":[10,11,12,5,6]
++			
++		},
++        "110":
++		{
++			"name": "C.SW",
++			"last_level":true,
++			"fields":["rs1","rs2","uimm_2_6"],
++			"rs1":[7,9],
++			"rs2":[2,4],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_2_6":[6,10,11,12,5]
++			
++		},
++        "111":
++		{
++			"name": "C.FSW",
++			"last_level":true,
++			"fields":["rs1","rs2","uimm_2_6"],
++			"rs1":[7,9],
++			"rs2":[2,4],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"uimm_2_6":[6,10,11,12,5]
++			
++		}
++	},
++	"01": 
++	{
++		"name":"compresed1",
++		"last_level":false,
++        "bit_range":[13,15],
++        "000":
++		{
++			"name": "C.NOP",
++			"last_level":true,
++			"fields":[],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":false
++		},
++        "001":
++		{
++			"name": "C.JAL",
++			"last_level":true,
++			"fields":["imm"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":false,
++			"imm":[3,4,5,11,2,7,6,9,10,8,12]
++		},
++        "010":
++		{
++			"name": "C.LI",
++			"last_level":true,
++			"fields":["rd","imm"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rd":[7,11],
++			"imm":[2,3,4,5,6,12]
++		},
++        "011":
++		{
++			"name": "C.ADDI16SP",
++			"last_level":true,
++			"fields":["nzimm_4_9"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"nzimm_4_9":[6,2,5,3,4,12]
++		},
++        "100": 
++		{
++			"name": "Q1_4",
++			"last_level":false,
++			"bit_range":[10,11],
++			"00":
++			{
++				"name": "C.SRLI",
++				"last_level":true,
++				"fields":["nzuimm","rd","rs1"],
++				"rs1":[7,9],
++				"imm_bits_or_bound":"bits",
++				"separated_imm":true,
++				"nzuimm":[2,3,4,5,6,12],
++				"rd":[7,9]
++			},
++			"01":
++			{
++				"name": "C.SRAI",
++				"last_level":true,
++				"fields":["nzuimm","rd","rs1"],
++				"rs1":[7,9],
++				"imm_bits_or_bound":"bits",
++				"separated_imm":true,
++				"nzuimm":[2,3,4,5,6,12],
++				"rd":[7,9]
++			},
++			"10":
++			{
++				"name": "C.ANDI",
++				"last_level":true,
++				"fields":["nzuimm","rd","rs1"],
++				"rs1":[7,9],
++				"imm_bits_or_bound":"bits",
++				"separated_imm":true,
++				"nzuimm":[2,3,4,5,6,12],
++				"rd":[7,9]
++			},
++			"11":
++			{
++				"name": "Q1_4_3",
++				"last_level":false,
++				"bit_range":[12],
++				"0":
++				{
++					"name": "Q1_4_3_0",
++					"last_level":false	,		
++					"bit_range":[5,6],
++					"00":
++					{
++						"name": "C.SUB",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]
++					},
++					"01":
++					{
++						"name": "C.XOR",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]		
++					},
++					"10":
++					{
++						"name": "C.OR",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]		
++					},
++					"11":
++					{
++						"name": "C.AND",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]	
++					}
++				},
++				"1":
++				{
++					"name": "Q1_4_3_1",
++					"last_level":false,
++					"bit_range":[5,6],
++					"00":
++					{
++						"name": "C.SUBW",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]
++					},
++					"01":
++					{
++						"name": "C.ADDW",
++						"last_level":true,
++						"fields":["rs2","rd","rs1"],
++						"rs1":[7,9],
++						"imm_bits_or_bound":"bits",
++						"separated_imm":true,
++						"rs2":[2,4],
++						"rd":[7,9]				
++					}
++				}
++				
++			}
++		},
++		"101":
++		{
++			"name": "C.J",
++			"last_level":true,
++			"fields":["imm"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"imm":[3,4,5,11,2,7,6,9,10,8,12]		
++		},
++		"110":
++		{
++			"name": "C.BEQZ",
++			"last_level":true,
++			"fields":["rs1","imm_1_8"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rs1":[7,9],
++			"imm_1_8":[3,4,10,11,2,5,6,12]	
++		},
++		"111":
++		{
++			"name": "C.BNEZ",
++			"last_level":true,
++			"fields":["rs1","imm_1_8"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rs1":[7,9],
++			"imm_1_8":[3,4,10,11,2,5,6,12]	
++		}
++	},
++	"10":
++	{
++		"name":"compresed2",
++	    "last_level":false,
++	    "bit_range":[13,15],
++	    "000":
++		{
++			"name": "C.SLLI",		
++			"last_level":true,
++			"fields":["rd","nzuimm"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rd":[7,11],
++			"rs1":[7,9],
++			"nzuimm":[2,3,4,5,6,12]
++		},
++		"001":
++		{
++			"name": "C.FLDSP",		
++			"last_level":true,
++			"fields":["rd","uimm"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rd":[7,11],
++			"uimm":[2,3,4,5,6,12]
++		},
++		"010":
++		{
++			"name": "C.LWSP",		
++			"last_level":true,
++			"fields":["rd","uimm2_7"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rd":[7,11],
++			"uimm2_7":[4,5,6,12,2,3]
++		},
++		"011":
++		{
++			"name": "C.FLWSP",		
++			"last_level":true,
++			"fields":["rd","uimm2_7"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rd":[7,11],
++			"uimm2_7":[4,5,6,12,2,3]
++		},	
++        "100": 
++		{
++			"name": "Q2_4",
++			"last_level":false,
++			"bit_range":[12],
++			"0":
++			{
++				"name": "Q2_4_0",
++				"last_level":false,
++				"bit_range":[2,6],
++				"00000":
++				{
++					"name": "C.JR",		
++					"last_level":true,
++					"fields":["rs1"],
++					"imm_bits_or_bound":"bits",
++					"separated_imm":true,
++					"rs1":[7,11]
++				},
++				"else":
++				{
++					"name": "C.MV",		
++					"last_level":true,
++					"fields":["rd","rs2"],
++					"imm_bits_or_bound":"bits",
++					"separated_imm":true,
++					"rs2":[2,6],
++					"rd":[7,11]
++				}
++	
++			},		
++			"1":
++			{
++				"name": "Q2_4_1",
++			    "last_level":false,
++			    "bit_range":[7,11],
++			    "00000":
++				{
++					"name": "C.EBREAK",		
++				    "last_level":true,
++				    "fields":[],
++				    "imm_bits_or_bound":"bits",
++				    "separated_imm":true
++				},
++				"else":
++				{
++					"name": "Q2_4_1_1",
++				    "last_level":false,
++				    "bit_range":[2,6],
++				    "000000":
++					{
++						"name": "C.JALR",		
++					    "last_level":true,
++					    "fields":["rs1"],
++					    "imm_bits_or_bound":"bits",
++						"rs1":[7,11],
++					    "separated_imm":true
++					},
++					"else":
++					{
++						"name": "C.ADD",		
++					    "last_level":true,
++					    "fields":["rs1","rs2"],
++					    "imm_bits_or_bound":"bits",
++					    "rs1":[7,11],
++						"rs2":[2,6],
++					    "separated_imm":true
++					}
++				}
++			}
++		},
++		"101":
++		{
++			"name": "C.FSDSP",		
++			"last_level":true,
++			"fields":["rs2","uimm3_8"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rs2":[7,11],
++			"uimm3_8":[10,11,12,7,8,9]
++		},	
++		"110":
++		{
++			"name": "C.SWSP",		
++			"last_level":true,
++			"fields":["rs2","uimm2_7"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rs2":[7,11],
++			"uimm2_7":[10,11,12,7,8,9]
++		},	
++		"111":
++		{
++			"name": "C.FSWSP",		
++			"last_level":true,
++			"fields":["rs2","uimm2_7"],
++			"imm_bits_or_bound":"bits",
++			"separated_imm":true,
++			"rs2":[7,11],
++			"uimm2_7":[10,11,12,7,8,9]
++		}	
++	},
++	"11":
++	{
++		"name":"RV32I/RV64I/RV32M/RV64M",
++		"last_level":false,
++        "bit_range":[2,6],
++        "01101":
++        {
++        	"name": "LUI",
++			"last_level":true,
++            "fields":["rd","imm"],
++            "rd":[7,11],
++            "separated_imm":false,
++            "imm":[12,31]
++        },
++        "00101":
++        {
++        	"name": "AUIPC",
++			"last_level":true,
++            "fields":["rd","imm"],
++            "rd":[7,11],
++            "separated_imm":false,
++            "imm":[12,31]
++        },
++        "11011":
++        {
++        	"name": "JAL",
++			"last_level":true,
++            "fields":["rd","imm"],
++            "rd":[7,11],
++            "separated_imm":false,
++            "imm":[12,31]
++        },
++        "11001":
++        {
++        	"name": "JALR",
++			"last_level":true,
++            "fields":["rd","rs1","imm"],
++            "rd":[7,11],
++            "rs1":[15,19],
++            "separated_imm":false,
++            "imm":[20,31]
++        },
++		"11000":
++		{
++			"name": "Branch",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000" :       
++			{	
++             	"name": "BEQ",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			}, 
++            "001" : 
++			{	
++             	"name": "BNE",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			},
++            "100" : 
++			{	
++             	"name": "BLT",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			},
++            "101" : 
++			{	
++             	"name": "BGE",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			},
++            "110" : 
++			{	
++             	"name": "BLTU",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			},
++            "111" : 
++			{	
++             	"name": "BGEU",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs1":[15,19],
++                "rs2":[20,24],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++			}
++		},			
++		"00000":
++		{
++			"name": "LOAD",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000" : 
++			{	
++             	"name": "LB",
++                "last_level":true,
++                "fields":["rs1","rs2","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "001" : 
++			{	
++             	"name": "LH",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,         
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "010" : 
++			{	
++             	"name": "LW",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "100" : 
++			{	
++             	"name": "LBU",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "101" : 
++			{	
++             	"name": "LHU",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "110" : 
++			{	
++             	"name": "LWU",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			},
++            "011" : 
++			{	
++             	"name": "LD",
++                "last_level":true,
++                "fields":["rs1","rd","imm"],
++                "separated_imm":false,
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++			}
++		},
++        "01000" :
++			{
++            "name": "S",
++			"last_level":false,
++			"bit_range":[12,14],
++            "000":
++                {
++                "name": "SB",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs2":[20,24],
++                "rs1":[15,19],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++                },
++            "001":
++                {
++                "name": "SH",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs2":[20,24],
++                "rs1":[15,19],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++                },
++            "010":
++                {
++                "name": "SW",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs2":[20,24],
++                "rs1":[15,19],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++                },
++            "011":
++                {
++                "name": "SD",
++                "last_level":true,
++                "fields":["rs1","rs2","imm_low","imm_high"],
++                "rs2":[20,24],
++                "rs1":[15,19],
++                "separated_imm":true,
++                "imm_low":[7,11],
++                "imm_high":[25,31]
++                }
++			},
++        "00100" :
++			{
++            "name": "Itype",
++			"last_level":false,
++			"bit_range":[12,14],
++            "000":
++                {
++                "name": "ADDI",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "001":
++                {
++                "name": "SLLI",
++                "last_level":true,
++                "fields":["rd","rs1","shamt"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "shamt":[20,25]
++                },
++            "010":
++                {
++                "name": "SLTI",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "011":
++                {
++                "name": "SLTIU",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "100":
++                {
++                "name": "XORI",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "101":
++                {
++                "name": "SRLI/SRAI",
++                "last_level":false,
++				"bit_range":[30,31],
++				"00":
++					{
++					"name":"SRLI",
++					"last_level":true,
++					"fields":["rd","rs1","shamt"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"separated_imm":false,
++					"shamt":[20,25]
++					},
++				"01":
++					{
++					"name":"SRAI",
++					"last_level":true,
++					"fields":["rd","rs1","shamt"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"separated_imm":false,
++					"shamt":[20,25]
++					}
++                },
++            "110":
++                {
++                "name": "ORI",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "111":
++                {
++                "name": "ANDI",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "separated_imm":false,
++                "imm":[20,31]
++                },
++            "001":
++                {
++                "name": "SLLI",
++                "last_level":true,
++                "fields":["rd","rs1","shamt"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "shamt":[20,24]
++                },
++            "101":
++                {
++                "name":"SR",
++                "last_level":false,
++                "bit_range":[30,31],
++                "00":
++                    {
++                    "name": "SRLI",
++                    "last_level":true,
++                    "fields":["rd","rs1","shamt"],
++                    "rd":[7,11],
++                    "rs1":[15,19],
++                    "shamt":[20,24]
++                    },  
++                "01":
++                    {
++                    "name": "SRAI",
++                    "last_level":true,
++                    "fields":["rd","rs1","shamt"],
++                    "rd":[7,11],
++                    "rs1":[15,19],
++                    "shamt":[20,24]
++                    } 
++                }
++			},
++		"00110":
++			{
++			"name":"IW",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000":
++				{
++				"name": "ADDIW",
++                "last_level":true,
++                "fields":["rd","rs1","imm"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "imm":[20,31]
++				},
++			"001":
++				{
++				"name": "SLLIW",
++                "last_level":true,
++                "fields":["rd","rs1","shamt"],
++                "rd":[7,11],
++                "rs1":[15,19],
++                "shamt":[20,24]
++				},
++			"101":
++				{
++				"name": "SRLIW/SRAIW",
++                "last_level":false,
++				"bit_range":[30,31],
++				"00":
++					{
++					"name": "SRLIW",
++					"last_level":true,
++					"fields":["rd","rs1","shamt"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"shamt":[20,24]
++					},
++				"01":
++					{
++					"name": "SRAIW",
++					"last_level":true,
++					"fields":["rd","rs1","shamt"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"shamt":[20,24]
++					}
++				}
++		},
++		"01110":
++			{
++			"name":"W",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000":
++				{
++				"name":"ADDW/SUBW",
++				"last_level":false,
++				"bit_range":[30,31],
++				"00":
++					{
++					"name": "ADDW",
++					"last_level":true,
++					"fields":["rd","rs1","rs2"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"rs2":[20,24]
++					},
++				"01":
++					{
++					"name": "SUBW",
++					"last_level":true,
++					"fields":["rd","rs1","rs2"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"rs2":[20,24]
++					}
++
++				},
++			"001":
++				{
++				"name": "SLLW",
++				"last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"101":
++				{
++				"name":"SRLW/SRAW",
++				"last_level":false,
++				"bit_range":[30,31],
++				"00":
++					{
++					"name": "SRLW",
++					"last_level":true,
++					"fields":["rd","rs1","rs2"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"rs2":[20,24]
++					},
++				"01":
++					{
++					"name": "SRAW",
++					"last_level":true,
++					"fields":["rd","rs1","rs2"],
++					"rd":[7,11],
++					"rs1":[15,19],
++					"rs2":[20,24]
++					}
++				}
++		},
++		"01100":
++		{
++		"name":"RV32M",
++		"last_level":false,
++		"bit_range":[12,14],
++		"000":
++			{
++			"name": "MUL",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"001":
++			{
++			"name": "MULH",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"010":
++			{
++			"name": "MULHSU",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"011":
++			{
++			"name": "MULHU",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"100":
++			{
++			"name": "DIV",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"101":
++			{
++			"name": "DIVU",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"110":
++			{
++			"name": "REM",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"111":
++			{
++			"name": "REMU",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			}
++		},
++		"01110":
++		{
++		"name":"RV64M",
++		"last_level":false,
++		"bit_range":[12,14],
++		"000":
++			{
++			"name": "MULW",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"100":
++			{
++			"name": "DIVW",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"101":
++			{
++			"name": "DIVUW",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"110":
++			{
++			"name": "REMW",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			},
++		"111":
++			{
++			"name": "REMUW",
++			"last_level":true,
++			"fields":["rd","rs1","rs2"],
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rs2":[20,24]
++			}
++		},
++		"00001":
++		{
++		"name": "FLW",
++		"last_level":true,
++		"fields":["rd","rs1","imm"],
++		"rd":[7,11],
++		"rs1":[15,19],
++        "imm":[20,31]
++		},
++		"01001":
++		{
++		"name": "FSW",
++		"last_level":true,
++		"fields":["rs1","rs2","imm"],
++		"imm_bits_or_bound":"bits",
++		"rs2":[20,24],
++		"rs1":[15,19],
++		"imm":[7,8,9,10,11,25,26,27,28,29,30,31]
++		},
++		"10000":
++		{
++		"name":"FMADD.S",
++		"last_level":true,
++		"fields":["rd","rm","rs1","rs2","rs3"],
++		"imm_bits_or_bound":"bits",
++		"rd":[7,11],
++		"rs1":[15,19],
++		"rs3":[27,31],
++		"rm":[12,14],
++		"rs2":[20,24]
++		},
++		"10001":
++		{
++		"name":"FMSUB.S",
++		"last_level":true,
++		"fields":["rd","rm","rs1","rs2","rs3"],
++		"imm_bits_or_bound":"bits",
++		"rd":[7,11],
++		"rs1":[15,19],
++		"rs3":[27,31],
++		"rm":[12,14],
++		"rs2":[20,24]
++		},
++		"10010":
++		{
++		"name":"FNMSUB.S",
++		"last_level":true,
++		"fields":["rd","rm","rs1","rs2","rs3"],
++		"imm_bits_or_bound":"bits",
++		"rd":[7,11],
++		"rs1":[15,19],
++		"rs3":[27,31],
++		"rm":[12,14],
++		"rs2":[20,24]
++		},
++		"10010":
++		{
++		"name":"FNMADD.S",
++		"last_level":true,
++        "fields":["rd","rm","rs1","rs2","rs3"],
++		"imm_bits_or_bound":"bits",
++		"rd":[7,11],
++		"rs1":[15,19],
++		"rs3":[27,31],
++		"rm":[12,14],
++		"rs2":[20,24]
++		},
++		"10100":
++		{
++		"name":"FR-TYPE",
++		"last_level":false,
++		"bit_range":[25,31],
++		"0000000":
++			{
++			"name":"FADD.S",
++			"last_level":true,
++			"fields":["rd","rm","rs1","rs2"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rm":[12,14],
++			"rs2":[20,24]
++			},
++		"0000100":
++			{
++			"name":"FSUB.S",
++			"last_level":true,
++			"fields":["rd","rm","rs1","rs2"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rm":[12,14],
++			"rs2":[20,24]
++			},
++		"0001000":
++			{
++			"name":"FMUL.S",
++			"last_level":true,
++			"fields":["rd","rm","rs1","rs2"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rm":[12,14],
++			"rs2":[20,24]
++			},
++		"0001100":
++			{
++			"name":"FDIV.S",
++			"last_level":true,
++			"fields":["rd","rm","rs1","rs2"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rm":[12,14],
++			"rs2":[20,24]
++			},
++		"0101100":
++			{
++			"name":"FSQRT.S",
++			"last_level":true,
++			"fields":["rd","rm","rs1"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19],
++			"rm":[12,14]
++			},	
++		"0010000":
++			{
++			"name":"FSGNJ.S/FSGNJN.S/FSGNJX.S",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000":
++				{
++				"name":"FSGNJ.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"001":
++				{
++				"name":"FSGNJN.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"010":
++				{
++				"name":"FSGNJX.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				}
++			},	
++		"0010100":
++			{
++			"name":"FMIN.S/FMAX.S",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000":
++				{
++				"name":"FMIN.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"001":
++				{
++				"name":"FMAX.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				}
++			},
++		"1100000":
++			{
++			"name":"FCVT.W.S/FCVT.WU.S",
++			"last_level":false,
++			"bit_range":[20,24],
++			"00000":
++				{
++				"name":"FCVT.W.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				},
++			"00001":
++				{
++				"name":"FCVT.WU.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				}
++			},
++		"1010000":
++			{
++			"name":"FEQ.S/FLT.S/FLE.S",
++			"last_level":false,
++			"bit_range":[12,14],
++			"010":
++				{
++				"name":"FEQ.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"001":
++				{
++				"name":"FLT.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				},
++			"000":
++				{
++				"name":"FLE.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rs2"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rs2":[20,24]
++				}
++			},	
++		"1110000":
++			{
++			"name":"FMV.X.S/FCLASS.S",
++			"last_level":false,
++			"bit_range":[12,14],
++			"000":
++				{
++				"name":"FMV.X.S",
++			    "last_level":true,
++				"fields":["rd","rs1"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19]
++				},
++			"001":
++				{
++				"name":"FCLASS.S",
++			    "last_level":true,
++				"fields":["rd","rs1"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19]
++				}
++			},	
++		"1111000":
++			{
++			"name":"FMV.W.X",
++			"last_level":true,
++			"fields":["rd","rs1"],
++			"imm_bits_or_bound":"bits",
++			"rd":[7,11],
++			"rs1":[15,19]
++			},
++		"1100000":
++			{
++			"name":"FCVT.L.S/FCVT.LU.S/FCVT.W.S/FCVT.WU.S",
++			"last_level":false,
++			"bit_range":[20,24],
++			"00010":
++				{
++				"name":"FCVT.L.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				},
++			"00011":
++				{
++				"name":"FCVT.LU.S",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				},
++			"00000":	
++				{	
++				"name":"FCVT.W.S",	
++			    "last_level":true,	
++				"fields":["rd","rs1","rm"],	
++				"imm_bits_or_bound":"bits",	
++				"rd":[7,11],	
++				"rs1":[15,19],	
++				"rm":[12,14]	
++				},	
++			"00001":	
++				{	
++				"name":"FCVT.WU.S",	
++			    "last_level":true,	
++				"fields":["rd","rs1","rm"],	
++				"imm_bits_or_bound":"bits",	
++				"rd":[7,11],	
++				"rs1":[15,19],	
++				"rm":[12,14]	
++				}	
++			},
++		"1101000":
++			{
++			"name":"FCVT.S.L/FCVT.S.LU/FCVT.S.W/FCVT.S.WU",
++			"last_level":false,
++			"bit_range":[20,24],
++			"00010":
++				{
++				"name":"FCVT.S.L",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				},
++			"00011":
++				{
++				"name":"FCVT.S.LU",
++			    "last_level":true,
++				"fields":["rd","rs1","rm"],
++				"imm_bits_or_bound":"bits",
++				"rd":[7,11],
++				"rs1":[15,19],
++				"rm":[12,14]
++				},
++			"00000":	
++				{	
++				"name":"FCVT.S.W",	
++			    "last_level":true,	
++				"fields":["rd","rs1","rm"],	
++				"imm_bits_or_bound":"bits",	
++				"rd":[7,11],	
++				"rs1":[15,19],	
++				"rm":[12,14]	
++				},	
++			"00001":	
++				{	
++				"name":"FCVT.S.WU",	
++			    "last_level":true,	
++				"fields":["rd","rs1","rm"],	
++				"imm_bits_or_bound":"bits",	
++				"rd":[7,11],	
++				"rs1":[15,19],	
++				"rm":[12,14]	
++				}	
++
++			}
++			
++		}
++	}
++}
+\ No newline at end of file
+Index: src/Instruction.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from Definitions import *\r\nfrom Memory import Memory\r\n\r\nCSV_IDX_DICT = {\"pc\": 1, \"m_inst\": 5, \"inst_name\": 7, \"br_taken\": 8}\r\n# CSV_IDX_DICT = {\"tick_rec\":0, \"pc\":1, \"dpc\":2, \"pc_req_\":3,dpc_req,m_inst,inst_grp,cname,br_taken\r\n\r\n\r\nclass Instruction:\r\n\r\n    def __init__(self, tid=0, pc=\"\", inst_name=\"x\", inst_num=\"x\", empty_inst=True):\r\n        self.pc = pc\r\n        self.inst_name = inst_name\r\n        self.br_taken = \"x\"\r\n        self.m_inst = \"\"\r\n        self.tid = tid\r\n        self.num = inst_num\r\n        self.empty_inst = empty_inst\r\n        self.inst_commit = 0\r\n        self.anomaly = False\r\n        # Inst fields\r\n        self.name = \"NOP\"\r\n        self.inst_opcode = \"NOP\"\r\n        self.rd_vld = False\r\n        self.rs1_vld = False\r\n        self.rs2_vld = False\r\n        self.rd = \"\"\r\n        self.rs1 = \"\"\r\n        self.rs2 = \"\"\r\n\r\n    def str(self):\r\n        if self.inst_name == \"Bubble\":\r\n            return self.inst_name\r\n        else:\r\n            return \"T{0}-{1}\".format(self.tid, self.inst_name)\r\n\r\n    def full_str(self):\r\n        return \"{0}-BT-{1}-E{2} {3} {4}\".format(self.str(), self.br_taken, self.empty(), self.m_inst[::-1], self.isa_str())\r\n\r\n    def isa_str(self):\r\n        return \"{0},{1},{2},{3}\".format(self.name, self.rd, self.rs1, self.rs2)\r\n\r\n    def empty(self):\r\n        return 1 if self.empty_inst else 0\r\n\r\n    def is_branch(self):\r\n        return self.inst_opcode in [\"BRANCH\"]\r\n\r\n    def is_event(self):\r\n        is_store = self.inst_opcode == \"LOAD\"\r\n        is_branch = self.inst_opcode in [\"JAL\", \"JALR\", \"BRANCH\"]\r\n        is_muldiv = (self.inst_opcode in MULDIV.values()) or (self.inst_opcode in MULDIV64.values())\r\n        return is_store or is_branch or is_muldiv\r\n\r\n    def decode_inst(self):\r\n        assert self.m_inst[0:2] == \"11\", \"Support only ILEN 32\"\r\n        opcode = (self.m_inst[0:7])[::-1]\r\n        func3 = int((self.m_inst[12:15])[::-1], 2)\r\n        immd_25 = int((self.m_inst[25])[::-1], 2)\r\n        # pprint(self.inst_name, \"DEBUG\")\r\n        assert opcode in OPCODE.keys(), \"Unknown opcode {0}, supported RV64I \".format(opcode)\r\n        self.inst_opcode = OPCODE[opcode]\r\n        if self.inst_opcode == \"BRANCH\":\r\n            assert func3 in BRANCH.keys(), \"Unknown BRANCH func3 {0}\".format(func3)\r\n            self.name = BRANCH[func3]\r\n        elif self.inst_opcode == \"LOAD\":\r\n            assert func3 in LOAD.keys(), \"Unknown LOAD func3 {0}\".format(func3)\r\n            self.name = LOAD[func3]\r\n        elif self.inst_opcode == \"STORE\":\r\n            assert func3 in STORE.keys(), \"Unknown STORE func3 {0}\".format(func3)\r\n            self.name = STORE[func3]\r\n        elif self.inst_opcode == \"ALUI\":\r\n            assert func3 in ALUI.keys(), \"Unknown ALUI func3 {0}\".format(func3)\r\n            self.name = ALUI[func3]\r\n            if self.name == \"SRI\":\r\n                self.name = SRI[int(self.m_inst[30])]\r\n        elif self.inst_opcode == \"ALU\":\r\n            if immd_25 == 1:\r\n                assert func3 in MULDIV.keys(), \"Unknown MULDIV func3 {0}\".format(func3)\r\n                self.name = MULDIV[func3]\r\n            else:\r\n                assert func3 in ALU.keys(), \"Unknown ALU func3 {0}\".format(func3)\r\n                self.name = ALU[func3]\r\n            if self.name == \"ADD_SUB\":\r\n                self.name = ADD_SUB[int(self.m_inst[30])]\r\n            elif self.name == \"SR\":\r\n                self.name = SR[int(self.m_inst[30])]\r\n        elif self.inst_opcode == \"ALUIW\":\r\n            assert func3 in ALUIW.keys(), \"Unknown ALUIW func3 {0}\".format(func3)\r\n            self.name = ALUIW[func3]\r\n        elif self.inst_opcode == \"ALUW\":\r\n            if immd_25 == 1:\r\n                assert func3 in MULDIV64.keys(), \"Unknown MULDIV64 func3 {0}\".format(func3)\r\n                self.inst_opcode = MULDIV64[func3]\r\n            else:\r\n                assert func3 in ALUW.keys(), \"Unknown ALUW func3 {0}\".format(func3)\r\n                self.inst_opcode = ALUW[func3]\r\n        else:\r\n            self.name = self.inst_opcode\r\n        self.decode_operands()\r\n\r\n    def decode_operands(self):\r\n        rd = int((self.m_inst[7:12])[::-1], 2)\r\n        rs1 = int((self.m_inst[15:20])[::-1], 2)\r\n        rs2 = int((self.m_inst[20:25])[::-1], 2)\r\n        if self.inst_opcode in [\"LUI\", \"AUIPC\", \"JAL\", \"JALR\", \"LOAD\", \"ALUI\", \"ALU\", \"ALUW\", \"FENCE\"]:\r\n            self.rd_vld = True\r\n            self.rd = rd\r\n        if self.inst_opcode in [\"JALR\", \"BRANCH\", \"LOAD\", \"STORE\", \"ALUI\", \"ALU\", \"ALUW\", \"FENCE\"]:\r\n            self.rs1_vld = True\r\n            self.rs1 = rs1\r\n        if self.inst_opcode in [\"BRANCH\", \"STORE\", \"ALU\", \"ALUW\"]:\r\n            self.rs2_vld = True\r\n            self.rs2 = rs2\r\n\r\n    def __bool__(self):\r\n        return not self.empty_inst\r\n\r\n    def __eq__(self, other):\r\n        return (self.pc == other.pc) and (self.tid == other.tid) and (self.m_inst == other.m_inst)\r\n\r\n    def __ne__(self, other):\r\n        return not self == other\r\n\r\n    @staticmethod\r\n    def inst_from_row(memory: Memory, ptr: int, tid):\r\n        csv_row = memory.get_row(ptr)\r\n        csv_keys = memory.get_instruction_keys()\r\n        new_inst = Instruction()\r\n        new_inst.empty_inst = False\r\n        new_inst.tid = tid\r\n        new_inst.num = ptr\r\n        new_inst.pc = csv_row[csv_keys[\"pc\"]]\r\n        new_inst.inst_name = csv_row[csv_keys[\"cname\"]]\r\n        new_inst.br_taken = int(csv_row[csv_keys[\"br_taken\"]])\r\n        new_inst.m_inst = \"{0:032b}\".format(int(csv_row[csv_keys[\"m_inst\"]]))[::-1]\r\n        new_inst.anomaly = int(csv_row[csv_keys['anomaly']] if 'anomaly' in csv_keys else False)\r\n        # The trace not indicate on taken branches\r\n        if (new_inst.inst_name == \"jal\") or (new_inst.inst_name == \"jalr\"):\r\n            new_inst.br_taken = 1\r\n        new_inst.decode_inst()\r\n        return new_inst\r\n\r\n\r\n\r\n    @staticmethod\r\n    def empty_inst(tid, name=\"Bubble\", empty_inst=True):\r\n        return Instruction(tid, \"Z\", name, \"x\", empty_inst)\r\n\r\n    def delta_pc(self, inst):\r\n        return abs(int(self.pc) - int(inst.pc))\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Instruction.py b/src/Instruction.py
+--- a/src/Instruction.py	
++++ b/src/Instruction.py	
+@@ -1,5 +1,6 @@
+ from Definitions import *
+ from Memory import Memory
++from Decode import *
+ 
+ CSV_IDX_DICT = {"pc": 1, "m_inst": 5, "inst_name": 7, "br_taken": 8}
+ # CSV_IDX_DICT = {"tick_rec":0, "pc":1, "dpc":2, "pc_req_":3,dpc_req,m_inst,inst_grp,cname,br_taken
+@@ -51,66 +52,6 @@
+         is_muldiv = (self.inst_opcode in MULDIV.values()) or (self.inst_opcode in MULDIV64.values())
+         return is_store or is_branch or is_muldiv
+ 
+-    def decode_inst(self):
+-        assert self.m_inst[0:2] == "11", "Support only ILEN 32"
+-        opcode = (self.m_inst[0:7])[::-1]
+-        func3 = int((self.m_inst[12:15])[::-1], 2)
+-        immd_25 = int((self.m_inst[25])[::-1], 2)
+-        # pprint(self.inst_name, "DEBUG")
+-        assert opcode in OPCODE.keys(), "Unknown opcode {0}, supported RV64I ".format(opcode)
+-        self.inst_opcode = OPCODE[opcode]
+-        if self.inst_opcode == "BRANCH":
+-            assert func3 in BRANCH.keys(), "Unknown BRANCH func3 {0}".format(func3)
+-            self.name = BRANCH[func3]
+-        elif self.inst_opcode == "LOAD":
+-            assert func3 in LOAD.keys(), "Unknown LOAD func3 {0}".format(func3)
+-            self.name = LOAD[func3]
+-        elif self.inst_opcode == "STORE":
+-            assert func3 in STORE.keys(), "Unknown STORE func3 {0}".format(func3)
+-            self.name = STORE[func3]
+-        elif self.inst_opcode == "ALUI":
+-            assert func3 in ALUI.keys(), "Unknown ALUI func3 {0}".format(func3)
+-            self.name = ALUI[func3]
+-            if self.name == "SRI":
+-                self.name = SRI[int(self.m_inst[30])]
+-        elif self.inst_opcode == "ALU":
+-            if immd_25 == 1:
+-                assert func3 in MULDIV.keys(), "Unknown MULDIV func3 {0}".format(func3)
+-                self.name = MULDIV[func3]
+-            else:
+-                assert func3 in ALU.keys(), "Unknown ALU func3 {0}".format(func3)
+-                self.name = ALU[func3]
+-            if self.name == "ADD_SUB":
+-                self.name = ADD_SUB[int(self.m_inst[30])]
+-            elif self.name == "SR":
+-                self.name = SR[int(self.m_inst[30])]
+-        elif self.inst_opcode == "ALUIW":
+-            assert func3 in ALUIW.keys(), "Unknown ALUIW func3 {0}".format(func3)
+-            self.name = ALUIW[func3]
+-        elif self.inst_opcode == "ALUW":
+-            if immd_25 == 1:
+-                assert func3 in MULDIV64.keys(), "Unknown MULDIV64 func3 {0}".format(func3)
+-                self.inst_opcode = MULDIV64[func3]
+-            else:
+-                assert func3 in ALUW.keys(), "Unknown ALUW func3 {0}".format(func3)
+-                self.inst_opcode = ALUW[func3]
+-        else:
+-            self.name = self.inst_opcode
+-        self.decode_operands()
+-
+-    def decode_operands(self):
+-        rd = int((self.m_inst[7:12])[::-1], 2)
+-        rs1 = int((self.m_inst[15:20])[::-1], 2)
+-        rs2 = int((self.m_inst[20:25])[::-1], 2)
+-        if self.inst_opcode in ["LUI", "AUIPC", "JAL", "JALR", "LOAD", "ALUI", "ALU", "ALUW", "FENCE"]:
+-            self.rd_vld = True
+-            self.rd = rd
+-        if self.inst_opcode in ["JALR", "BRANCH", "LOAD", "STORE", "ALUI", "ALU", "ALUW", "FENCE"]:
+-            self.rs1_vld = True
+-            self.rs1 = rs1
+-        if self.inst_opcode in ["BRANCH", "STORE", "ALU", "ALUW"]:
+-            self.rs2_vld = True
+-            self.rs2 = rs2
+ 
+     def __bool__(self):
+         return not self.empty_inst
+@@ -122,29 +63,30 @@
+         return not self == other
+ 
+     @staticmethod
+-    def inst_from_row(memory: Memory, ptr: int, tid):
+-        csv_row = memory.get_row(ptr)
+-        csv_keys = memory.get_instruction_keys()
+-        new_inst = Instruction()
+-        new_inst.empty_inst = False
+-        new_inst.tid = tid
+-        new_inst.num = ptr
+-        new_inst.pc = csv_row[csv_keys["pc"]]
+-        new_inst.inst_name = csv_row[csv_keys["cname"]]
+-        new_inst.br_taken = int(csv_row[csv_keys["br_taken"]])
+-        new_inst.m_inst = "{0:032b}".format(int(csv_row[csv_keys["m_inst"]]))[::-1]
+-        new_inst.anomaly = int(csv_row[csv_keys['anomaly']] if 'anomaly' in csv_keys else False)
+-        # The trace not indicate on taken branches
+-        if (new_inst.inst_name == "jal") or (new_inst.inst_name == "jalr"):
+-            new_inst.br_taken = 1
+-        new_inst.decode_inst()
+-        return new_inst
+-
++    def empty_inst(tid, name="Bubble", empty_inst=True):
++        return Instruction(tid, "Z", name, "x", empty_inst)
++
++    def delta_pc(self, inst):
++        return abs(int(self.pc) - int(inst.pc))
++
++
++def inst_from_row(memory: Memory, ptr: int, tid):
++    csv_row = memory.get_row(ptr)
++    csv_keys = memory.get_instruction_keys()
++    new_inst = Instruction()
++    new_inst.empty_inst = False
++    new_inst.tid = tid
++    new_inst.num = ptr
++    new_inst.pc = csv_row[csv_keys["pc"]]
++    new_inst.inst_name = csv_row[csv_keys["cname"]]
++    new_inst.br_taken = int(csv_row[csv_keys["br_taken"]])
++    new_inst.m_inst = "{0:032b}".format(int(csv_row[csv_keys["m_inst"]]))[::-1]
++    new_inst.anomaly = int(csv_row[csv_keys['anomaly']] if 'anomaly' in csv_keys else False)
++    # The trace not indicate on taken branches
++    if (new_inst.inst_name == "jal") or (new_inst.inst_name == "jalr"):
++        new_inst.br_taken = 1
+ 
++    decoded_inst=Decode(new_inst)         #-------------------omri added
++    decoded_inst.decodeInst(new_inst)     #------------------omri added
+ 
+-    @staticmethod
+-    def empty_inst(tid, name="Bubble", empty_inst=True):
+-        return Instruction(tid, "Z", name, "x", empty_inst)
+-
+-    def delta_pc(self, inst):
+-        return abs(int(self.pc) - int(inst.pc))
++    return new_inst;

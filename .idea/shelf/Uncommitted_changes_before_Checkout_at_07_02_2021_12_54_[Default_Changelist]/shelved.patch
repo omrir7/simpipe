@@ -1,0 +1,129 @@
+Index: simpipe/src/Decode.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from Definitions import *\r\nfrom Instruction import *\r\nimport json\r\nclass Decode():\r\n\r\n    def __init__(self,instruction):\r\n        instruction.opcode = (instruction.m_inst[0:7])[::-1]            #leftovers from old decode logic\r\n        instruction.func3 = int((instruction.m_inst[12:15])[::-1], 2)   #leftovers from old decode logic\r\n        instruction.immd_25 = int((instruction.m_inst[25])[::-1], 2)    #leftovers from old decode logic\r\n        instruction.m_inst=instruction.m_inst\r\n\r\n#   Decode fields -  gets an instruction and json arr an returns 2 arrays:\r\n#1. fields: the registers (and imm for non compressed instructions) that this instruction uses (example: [\"rd\",\"rs1\",\"rs2\"])\r\n#2. values: the values of fields. (for example: if fields is the same like last example, so values=[1,2,3] means that\r\n#           rd=1 rs1=2 rs2=3\r\n    def decodeFields(self, inst, arr):\r\n        fields = arr['fields']\r\n        values = [0] * len(fields)\r\n        for i in range(len(fields)):\r\n            cur_field_bit_range = arr[fields[i]]\r\n            values[i] = inst[cur_field_bit_range[0]:cur_field_bit_range[1] + 1]\r\n            #\r\n            if(values[i]):\r\n                values[i] = int(values[i], 2)\r\n        return values, fields\r\n\r\n#   decodeInst - gets an instruction and filles its following attributes:\r\n#   1. name\r\n#   2. used registers\r\n\r\n    def decodeInst(self, instruction):\r\n        with open('riscv_isa.json') as f:   #open json\r\n            arr_tmp = json.load(f)\r\n        last = False    #when we get to a leaf last=true\r\n        comp = 1        #compressed instruction\r\n        if (instruction.m_inst[1] == \"0\" and instruction.m_inst[0] == \"0\"): #compressed quardrad0\r\n            arr_tmp = arr_tmp[\"00\"]\r\n        if (instruction.m_inst[1] == \"0\" and instruction.m_inst[0] == \"1\"): #compressed quardrad1\r\n            arr_tmp = arr_tmp[\"01\"]\r\n        if (instruction.m_inst[1] == \"1\" and instruction.m_inst[0] == \"0\"): #compressed quardrad2\r\n            arr_tmp = arr_tmp[\"10\"]\r\n        if (instruction.m_inst[1] == \"1\" and instruction.m_inst[0] == \"1\"): #non-compressed\r\n            arr_tmp = arr_tmp[\"11\"]\r\n            comp = 0\r\n\r\n        while (last == 0):       # decending down the decoding tree until last leve/ leaf\r\n            last = arr_tmp['last_level']\r\n            if last==0:\r\n                bit_range = arr_tmp['bit_range']\r\n                if(len(bit_range)>1):\r\n                    next_field = instruction.m_inst[bit_range[0]:bit_range[1] + 1]\r\n                else:\r\n                    next_field = instruction.m_inst[bit_range[0]]\r\n                next_field = str(next_field)\r\n                if(next_field[::-1] not in arr_tmp):\r\n                    arr_tmp=arr_tmp['else']\r\n                else:\r\n                    arr_tmp = arr_tmp[next_field[::-1]]\r\n\r\n        values, fields = self.decodeFields(instruction.m_inst, arr_tmp)\r\n        instruction.name=arr_tmp['name']\r\n        for i in range(len(fields)):\r\n            if (fields[i]=='rd'):\r\n                instruction.rd=values[i]\r\n            elif (fields[i]=='rs1'):\r\n                instruction.rs1=values[i]\r\n            elif (fields[i]=='rs2'):\r\n                instruction.rs2=values[i]
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/simpipe/src/Decode.py b/simpipe/src/Decode.py
+--- a/simpipe/src/Decode.py	(revision 347fb5946fcc50bceaeafbd292684228a4f63f85)
++++ b/simpipe/src/Decode.py	(date 1612695216344)
+@@ -1,68 +1,58 @@
+ from Definitions import *
+ from Instruction import *
+-import json
+-class Decode():
++
++class decode():
+ 
+     def __init__(self,instruction):
+-        instruction.opcode = (instruction.m_inst[0:7])[::-1]            #leftovers from old decode logic
+-        instruction.func3 = int((instruction.m_inst[12:15])[::-1], 2)   #leftovers from old decode logic
+-        instruction.immd_25 = int((instruction.m_inst[25])[::-1], 2)    #leftovers from old decode logic
++        instruction.opcode = (instruction.m_inst[0:7])[::-1]
++        instruction.func3 = int((instruction.m_inst[12:15])[::-1], 2)
++        instruction.immd_25 = int((instruction.m_inst[25])[::-1], 2)
+         instruction.m_inst=instruction.m_inst
+ 
+-#   Decode fields -  gets an instruction and json arr an returns 2 arrays:
+-#1. fields: the registers (and imm for non compressed instructions) that this instruction uses (example: ["rd","rs1","rs2"])
+-#2. values: the values of fields. (for example: if fields is the same like last example, so values=[1,2,3] means that
+-#           rd=1 rs1=2 rs2=3
+-    def decodeFields(self, inst, arr):
+-        fields = arr['fields']
+-        values = [0] * len(fields)
+-        for i in range(len(fields)):
+-            cur_field_bit_range = arr[fields[i]]
+-            values[i] = inst[cur_field_bit_range[0]:cur_field_bit_range[1] + 1]
+-            #
+-            if(values[i]):
+-                values[i] = int(values[i], 2)
+-        return values, fields
+ 
+-#   decodeInst - gets an instruction and filles its following attributes:
+-#   1. name
+-#   2. used registers
++    def decode_operands(self,instruction):
++        rd = int((instruction.m_inst[7:12])[::-1], 2)
++        rs1 = int((instruction.m_inst[15:20])[::-1], 2)
++        rs2 = int((instruction.m_inst[20:25])[::-1], 2)
++        if instruction.inst_opcode in ["LUI", "AUIPC", "JAL", "JALR", "LOAD", "ALUI", "ALU", "ALUW", "FENCE"]:
++            instruction.rd_vld = True
++            instruction.rd = rd
++        if instruction.inst_opcode in ["JALR", "BRANCH", "LOAD", "STORE", "ALUI", "ALU", "ALUW", "FENCE"]:
++            instruction.rs1_vld = True
++            instruction.rs1 = rs1
++        if instruction.inst_opcode in ["BRANCH", "STORE", "ALU", "ALUW"]:
++            instruction.rs2_vld = True
++            instruction.rs2 = rs2
+ 
+-    def decodeInst(self, instruction):
+-        with open('riscv_isa.json') as f:   #open json
+-            arr_tmp = json.load(f)
+-        last = False    #when we get to a leaf last=true
+-        comp = 1        #compressed instruction
+-        if (instruction.m_inst[1] == "0" and instruction.m_inst[0] == "0"): #compressed quardrad0
+-            arr_tmp = arr_tmp["00"]
+-        if (instruction.m_inst[1] == "0" and instruction.m_inst[0] == "1"): #compressed quardrad1
+-            arr_tmp = arr_tmp["01"]
+-        if (instruction.m_inst[1] == "1" and instruction.m_inst[0] == "0"): #compressed quardrad2
+-            arr_tmp = arr_tmp["10"]
+-        if (instruction.m_inst[1] == "1" and instruction.m_inst[0] == "1"): #non-compressed
+-            arr_tmp = arr_tmp["11"]
+-            comp = 0
+-
+-        while (last == 0):       # decending down the decoding tree until last leve/ leaf
+-            last = arr_tmp['last_level']
+-            if last==0:
+-                bit_range = arr_tmp['bit_range']
+-                if(len(bit_range)>1):
+-                    next_field = instruction.m_inst[bit_range[0]:bit_range[1] + 1]
+-                else:
+-                    next_field = instruction.m_inst[bit_range[0]]
+-                next_field = str(next_field)
+-                if(next_field[::-1] not in arr_tmp):
+-                    arr_tmp=arr_tmp['else']
+-                else:
+-                    arr_tmp = arr_tmp[next_field[::-1]]
++    def decode_inst(self,instruction):
++        if instruction.inst_opcode == "BRANCH":
++            instruction.name = BRANCH[self.func3]
++        elif instruction.inst_opcode == "LOAD":
++            instruction.name = LOAD[self.func3]
++        elif instruction.inst_opcode == "STORE":
++            instruction.name = STORE[self.func3]
++        elif instruction.inst_opcode == "ALUI":
++            instruction.name = ALUI[self.func3]
++            if instruction.name == "SRI":
++                instruction.name = SRI[int(self.m_inst[30])]
++        elif instruction.inst_opcode == "ALU":
++            if instruction.immd_25 == 1:
++                instruction.name = MULDIV[self.func3]
++            else:
++                instruction.name = ALU[self.func3]
++            if instruction.name == "ADD_SUB":
++                instruction.name = ADD_SUB[int(self.m_inst[30])]
++            elif instruction.name == "SR":
++                instruction.name = SR[int(self.m_inst[30])]
++        elif instruction.inst_opcode == "ALUIW":
++            instruction.name = ALUIW[self.func3]
++        elif instruction.inst_opcode == "ALUW":
++            if instruction.immd_25 == 1:
++                instruction.inst_opcode = MULDIV64[self.func3]
++            else:
++                instruction.inst_opcode = ALUW[self.func3]
++        else:
++            instruction.name = instruction.inst_opcode
++        self.decode_operands(instruction)
+ 
+-        values, fields = self.decodeFields(instruction.m_inst, arr_tmp)
+-        instruction.name=arr_tmp['name']
+-        for i in range(len(fields)):
+-            if (fields[i]=='rd'):
+-                instruction.rd=values[i]
+-            elif (fields[i]=='rs1'):
+-                instruction.rs1=values[i]
+-            elif (fields[i]=='rs2'):
+-                instruction.rs2=values[i]
+\ No newline at end of file
++
